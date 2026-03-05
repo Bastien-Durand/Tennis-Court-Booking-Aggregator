@@ -26,12 +26,12 @@ app.get("/venues", async (req, res) => {
 app.get("/availability", async (req, res) => {
   const isoDate = new Date().toISOString().slice(0, 10);
   const date = req.query.date || isoDate.replaceAll("-", "");
-  const slots = [];
 
   try {
     const result = await pool.query("SELECT * FROM venues ORDER BY id");
     const responses = await Promise.all(
       result.rows.map(async (row) => {
+        const slots = [];
         const url = `https://www.tennisvenues.com.au/booking/${row.client_id}/fetch-booking-data?client_id=${row.client_id}&venue_id=${row.venue_id}&date=${date}`;
         const response = await fetch(url);
         const html = await response.text();
@@ -40,17 +40,27 @@ app.get("/availability", async (req, res) => {
           const href = $(el).attr("href");
           const courtId = new URLSearchParams(href.split("?")[1]).get("id");
 
+          // Step 1: Build the slots array
           slots.push({
             court: courtId,
             time: $(el).text(),
             link: `https://www.tennisvenues.com.au${href}`,
           });
         });
+
+        const courts = {};
+        slots.forEach((slot) => {
+          if (!courts[slot.court]) {
+            courts[slot.court] = [];
+          }
+          courts[slot.court].push({ time: slot.time, link: slot.link });
+        });
+
         return {
           name: row.name,
           client_id: row.client_id,
           suburb: row.suburb,
-          slots: slots,
+          courts: courts,
         };
       }),
     );
