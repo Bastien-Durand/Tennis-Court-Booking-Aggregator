@@ -39,10 +39,16 @@ app.get("/availability", async (req, res) => {
         $("a[href*='/booking/request']").each((i, el) => {
           const href = $(el).attr("href");
           const courtId = new URLSearchParams(href.split("?")[1]).get("id");
+          const courtMap = {
+            "2c90811783403f3c01834381408b0001": "C7",
+            "2c90811783403f3c01834381408f0002": "C8",
+          };
+
+          const court = courtMap[courtId] || courtId;
 
           // Step 1: Build the slots array
           slots.push({
-            court: courtId,
+            court: court,
             time: $(el).text(),
             link: `https://www.tennisvenues.com.au${href}`,
           });
@@ -56,11 +62,22 @@ app.get("/availability", async (req, res) => {
           courts[slot.court].push({ time: slot.time, link: slot.link });
         });
 
+        const sortedCourts = {};
+        Object.keys(courts)
+          .sort((a, b) => {
+            const numA = parseInt(a.replace("C", "")) || 999;
+            const numB = parseInt(b.replace("C", "")) || 999;
+            return numA - numB;
+          })
+          .forEach((key) => {
+            sortedCourts[key] = courts[key];
+          });
+
         return {
           name: row.name,
           client_id: row.client_id,
           suburb: row.suburb,
-          courts: courts,
+          courts: sortedCourts,
         };
       }),
     );
