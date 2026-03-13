@@ -13,15 +13,17 @@ type Venue = {
   courts: Record<string, Slot[]>;
 };
 
-function App() {
+const App = () => {
   const [venueData, setVenueData] = useState<Venue[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<number>(0);
   const [date, setDate] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
   });
+  const [loading, setLoading] = useState(false);
 
   const getData = async (): Promise<void> => {
+    setLoading(true);
     const url = `${import.meta.env.VITE_API_URL}/availability?date=${date}`;
     try {
       const response = await fetch(url);
@@ -37,6 +39,7 @@ function App() {
         console.error(error);
       }
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -157,8 +160,10 @@ function App() {
           </span>
         </div>
       </div>
-
-      <div className={styles.gridCard}>
+      {loading && (
+        <div className={styles.loading}>Fetching availability...</div>
+      )}
+      <div className={styles.gridCard} style={{ opacity: loading ? 0.5 : 1 }}>
         <table className={styles.grid}>
           <thead>
             <tr>
@@ -222,6 +227,6 @@ function App() {
       </div>
     </div>
   );
-}
+};
 
 export default App;
