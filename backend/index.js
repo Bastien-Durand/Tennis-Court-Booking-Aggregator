@@ -8,19 +8,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const cache = {};
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+const getCacheKey = (date) => {
+  return `availability_${date}`;
+};
+
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-});
-
-// Test route - get all venues
-app.get("/venues", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM venues ORDER BY id");
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error fetching venues:", error);
-    res.status(500).json({ error: "Failed to fetch venues" });
-  }
 });
 
 app.get("/availability", async (req, res) => {
@@ -28,6 +24,14 @@ app.get("/availability", async (req, res) => {
   const date = req.query.date || isoDate.replaceAll("-", "");
 
   try {
+    const cacheKey = getCacheKey(date);
+    if (
+      cache[cacheKey] &&
+      Date.now() - cache[cacheKey].timestamp < CACHE_DURATION
+    ) {
+      console.log("Serving from cache");
+      return res.json(cache[cacheKey].data);
+    }
     const result = await pool.query("SELECT * FROM venues ORDER BY id");
     const responses = await Promise.all(
       result.rows.map(async (row) => {
@@ -81,7 +85,7 @@ app.get("/availability", async (req, res) => {
         };
       }),
     );
-
+    cache[cacheKey] = { data: responses, timestamp: Date.now() };
     res.json(responses);
   } catch (error) {
     console.error("Error fetching availability:", error);
