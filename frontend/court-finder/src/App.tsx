@@ -1,16 +1,28 @@
 import { useState, useEffect } from "react";
 import styles from "./App.module.css";
 
+type Slot = {
+  time: string;
+  link: string;
+};
+
+type Venue = {
+  client_id: string;
+  name: string;
+  suburb: string;
+  courts: Record<string, Slot[]>;
+};
+
 function App() {
-  const [venueData, setVenueData] = useState([]);
-  const [selectedVenue, setSelectedVenue] = useState(0);
-  const [date, setDate] = useState(() => {
+  const [venueData, setVenueData] = useState<Venue[]>([]);
+  const [selectedVenue, setSelectedVenue] = useState<number>(0);
+  const [date, setDate] = useState<string>(() => {
     const d = new Date();
     return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
   });
 
-  const getData = async () => {
-    const url = `http://localhost:5001/availability?date=${date}`;
+  const getData = async (): Promise<void> => {
+    const url = `${import.meta.env.VITE_API_URL}/availability?date=${date}`;
     try {
       const response = await fetch(url);
       if (!response.ok) {
@@ -18,8 +30,12 @@ function App() {
       }
       const result = await response.json();
       setVenueData(result);
-    } catch (error) {
-      console.error(error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error(error.message);
+      } else {
+        console.error(error);
+      }
     }
   };
 
@@ -27,11 +43,11 @@ function App() {
     getData();
   }, [date]);
 
-  const formatDate = (dateStr) => {
+  const formatDate = (dateStr: string): string => {
     const year = dateStr.slice(0, 4);
     const month = dateStr.slice(4, 6);
     const day = dateStr.slice(6, 8);
-    const d = new Date(year, month - 1, day);
+    const d = new Date(Number(year), Number(month) - 1, Number(day));
     return d.toLocaleDateString("en-AU", {
       weekday: "long",
       day: "numeric",
@@ -40,7 +56,7 @@ function App() {
     });
   };
 
-  const changeDate = (direction) => {
+  const changeDate = (direction: number): void => {
     const year = parseInt(date.slice(0, 4));
     const month = parseInt(date.slice(4, 6)) - 1;
     const day = parseInt(date.slice(6, 8));
@@ -69,7 +85,7 @@ function App() {
   const venue = venueData[selectedVenue];
   const courtNames = Object.keys(venue.courts);
 
-  const allTimes = [];
+  const allTimes: string[] = [];
   Object.values(venue.courts).forEach((slots) => {
     slots.forEach((slot) => {
       if (!allTimes.includes(slot.time)) {
@@ -79,7 +95,7 @@ function App() {
   });
 
   allTimes.sort((a, b) => {
-    const toMinutes = (t) => {
+    const toMinutes = (t: string): number => {
       const [time, period] = [t.slice(0, -2), t.slice(-2)];
       let [hours, minutes] = time.split(":").map(Number);
       if (period === "pm" && hours !== 12) hours += 12;

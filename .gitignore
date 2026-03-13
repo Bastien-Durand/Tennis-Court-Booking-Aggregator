@@ -1,3 +1,4 @@
 frontend/court-finder/node_modules
 backend/node_modules
 backend/.env
+frontend/court-finder/.env
